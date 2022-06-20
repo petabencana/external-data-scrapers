@@ -1,6 +1,7 @@
 const https = require('https');
 const {Client} = require('pg');
 var path = require('path');
+var _lastContributionTime = {0:0};
 
 // Verify expected arguments and get config
 if (process.argv[2]) {
@@ -90,7 +91,27 @@ function _processResult(res){
     };
   
     dbQuery(sql);
-  }
+}
+
+function _getLastDataFromDatabase(){
+    console.log("Updating last contribution data from Database..")
+  
+    sql = {
+      text: "SELECT id, measuredatetime as epoch FROM " + config.earthquake.pg.table_earthquake + 
+      " ORDER BY measuredatetime DESC;"
+    }
+    response = dbQuery(sql, 
+      function ( result ) {
+        if (result && result.rows && result.rows.length > 0){
+          _lastContributionTime = result.rows[0].epoch
+          console.log('Set last observation times from database, datetime: ' + _lastContributionTime);
+        }
+        else {
+          console.log('Error setting last observation time from database (is the reports table empty?)');
+        }
+      }
+    );
+}
 
 function _connectDatabase(){
     client.connect(function(err) {
@@ -118,5 +139,6 @@ function dbQuery(sql,success) {
     client.end;
 }
 
+_getLastDataFromDatabase();
 _connectDatabase();
 _fetchResults();
