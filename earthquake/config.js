@@ -15,7 +15,7 @@ var config = {};
 
 // Earthquake web service API
 config.earthquake = {};
-config.earthquake.serviceURL = 'https://data.bmkg.go.id/DataMKG/TEWS/autogempa.json'
+config.earthquake.serviceURL = 'https://data.bmkg.go.id/DataMKG/TEWS/gempadirasakan.json'
 config.earthquake.historicalLoadPeriod = 1000 * 60 * 1440; // E.g. 1000 * 60 * 120 = 2 hours
 
 // Earthquake configuration for cognicity-schema

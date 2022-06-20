@@ -37,7 +37,7 @@ function _fetchResults(){
         var responseObject;
         try {
             responseObject = JSON.parse( response );
-            _processResult(responseObject.Infogempa.gempa);
+            _filterResults(responseObject);
         } catch (e) {
             console.log( "EarthquakeDataSource > poll > fetchResults: Error parsing JSON: " + response );
             return;
@@ -52,6 +52,33 @@ function _fetchResults(){
     });
 
     req.end();
+}
+
+function _filterResults(results) {
+    console.log("filtering results...");
+    results = results.Infogempa.gempa.reverse();
+  
+    // For each result:
+    var result = results.shift();
+          while( result ) {
+        console.log(result)
+        if ( Date.parse(result.DateTime) / 1000 <= _lastContributionTime) {
+          // We've seen this result before, check the next earthquake
+          console.log("EarthquakeDataSource > poll > processResults: Found already processed result with time: " + result.DateTime);
+        // } else if ( Date.parse(result.DateTime) < new Date().getTime() - config.earthquake.historicalLoadPeriod ) {
+        //   // This result is older than our cutoff, check the next earthquake
+        //   console.log("EarthquakeDataSource > poll > processResults: Result : " +  result.DateTime + " older than maximum configured age of " + config.earthquake.historicalLoadPeriod / 1000 + " seconds");
+        } else {
+          // Process this result
+          console.log("EarthquakeDataSource > poll > processResults: Processing result , " + result.DateTime);
+          _lastContributionTime = Date.parse(result.DateTime)/1000;
+          _processResult( result, 
+            function () {
+              console.log('Logged confirmed earthquake report');
+            } );
+        }
+        result = results.shift();
+    }
 }
 
 function _processResult(res){
