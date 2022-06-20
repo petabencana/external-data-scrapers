@@ -36,6 +36,7 @@ function _fetchResults(){
         var responseObject;
         try {
             responseObject = JSON.parse( response );
+            _processResult(responseObject.Infogempa.gempa);
         } catch (e) {
             console.log( "EarthquakeDataSource > poll > fetchResults: Error parsing JSON: " + response );
             return;
@@ -51,6 +52,45 @@ function _fetchResults(){
 
     req.end();
 }
+
+function _processResult(res){
+    sql = {
+      text: "INSERT INTO " + config.earthquake.pg.table_earthquake + " " +
+        "(tanggal, jam, datetime, measuredatetime, coordinate, lintang, bujur, magnitude, kedalaman, wilayah, potensi, dirasakan, shakemap) " +
+        "VALUES (" +
+        "$1, " +
+        "$2, " +
+        "$3, " +
+        "$4, " +
+        "$5, " +
+        "$6, " +
+        "$7, " +
+        "$8, " +
+        "$9, " +
+        "$10, " +
+        "$11, " +
+        "$12, " +
+        "$13" +
+        ");",
+      values : [
+        res.Tanggal,
+        res.Jam.split(' ')[0],
+        res.DateTime,
+        Date.parse(res.DateTime)/1000,
+        res.Coordinates,
+        res.Lintang,
+        res.Bujur,
+        res.Magnitude,
+        res.Kedalaman,
+        res.Wilayah,
+        res.Potensi,
+        res.Dirasakan,
+        res.Shakemap,
+      ]
+    };
+  
+    dbQuery(sql);
+  }
 
 function _connectDatabase(){
     client.connect(function(err) {
