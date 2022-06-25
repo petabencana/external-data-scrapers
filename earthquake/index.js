@@ -1,5 +1,6 @@
 const https = require('https');
 const {Client} = require('pg');
+const config_path = 'config.js';
 var path = require('path');
 var _lastContributionTime = {0:0};
 
