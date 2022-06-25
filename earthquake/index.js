@@ -144,15 +144,18 @@ function _getLastDataFromDatabase(){
 }
 
 function _connectDatabase(){
-    client.connect(function(err) {
-        if (err) throw err;
+    client.connect(function(error) {
+        if (error){
+          console.log("_connectDatabase: Error in connecting to database: " + error.message + ", " + error.stack);
+          throw error;
+        }
         console.log("Database Connected");
     });
 }
 
 function dbQuery(sql,success) {
-    client.query(sql,(err,res) => {
-        if (!err){
+    client.query(sql,(error,res) => {
+        if (!error){
         console.log( "dbQuery: success: " + JSON.stringify(config) );
         if (success) {
             try {
@@ -162,7 +165,8 @@ function dbQuery(sql,success) {
             }
         }
         } else {
-        console.log(err.stack);
+          console.log("dbQuery: Error in query sql: " + error.message + ", " + error.stack);
+          throw error;
         }
     });
 
