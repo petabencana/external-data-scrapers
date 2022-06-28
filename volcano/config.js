@@ -10,8 +10,9 @@ require('dotenv').config();
  * @property {number} volcano.historicalLoadPeriod Maximum age in milliseconds of reports which will be processed
  * @property {object} dims.pg Postgres configuration
  * @property {string} dims.pg.lastest_vona Database table to store volcano reports in
- * @property {string} volcano.pg.lastest_vona Database table to store volcano reports in
- * @property {string} volcano.access_token_key Token keyfrom the PVMBG 
+ * @property {string} volcano.pg.lastest_vona 
+ * @property {string} volcano.pg.list_volcano
+ * @property {string} volcano.access_token_key Take from the twitter dev admin interface
  */
 var config = {};
 
@@ -19,11 +20,12 @@ var config = {};
 config.volcano = {};
 config.volcano.access_token_key = process.env.VOLCANO_TOKEN_KEY;
 // config.volcano.serviceURL = 'https://magma.esdm.go.id/api/v1/home/gunung-api/informasi-letusan/latest'
-config.volcano.historicalLoadPeriod = 1000 * 60 * 1440; // E.g. 1000 * 60 * 120 = 2 hours
+config.volcano.historicalLoadPeriod = 1000 * 60 * 720; // E.g. 1000 * 60 * 120 = 2 hours
 
-// Earthquake configuration for cognicity-schema
+// volcano configuration for cognicity-schema
 config.volcano.pg = {};
 config.volcano.pg.lastest_vona = 'public.lastest_vona';
+config.volcano.pg.list_volcano = 'public.list_volcano';
 
 // Postgres database connection
 config.pg = {};

@@ -3,6 +3,7 @@ const https = require('https');
 const {Client} = require('pg');
 var path = require('path');
 const { appendFile } = require('fs');
+var _lastContributionTime = {0:0};
 
 if (process.argv[2]) {
   var config = require( __dirname + path.sep + process.argv[2] );
@@ -47,9 +48,9 @@ function _fetchResults(){
         var responseObject;
         try {
             responseObject = JSON.parse( response );
-            // _filterResults(responseObject);
             console.log(responseObject.data);
-            _processResult(responseObject.data);
+            _filterResults(responseObject.data);
+            // _processResult(responseObject.data);
         } catch (e) {
             console.log( " VolcanoDataSource > poll > fetchResults: Error parsing JSON: " + response );
             return;
@@ -64,11 +65,35 @@ function _fetchResults(){
     req.end();
     }
 
+    function _filterResults(results) {
+      console.log("filtering results...");
+      results = results;
+      console.log(results);
     
+      // For each result:
+      var result = results;
+      console.log(result.local_date)
+          if ( Date.parse(result.local_date) / 1000 <= _lastContributionTime) {
+            // We've seen this result before, check the next volcano
+            console.log("VolcanoDataSource > poll > processResults: Found already processed result with time: " + result.local_date);
+          // } else if ( Date.parse(result.DateTime) < new Date().getTime() - config.earthquake.historicalLoadPeriod ) {
+          //   // This result is older than our cutoff, check the next volcano
+          //   console.log("VolcanoDataSource > poll > processResults: Result : " +  result.DateTime + " older than maximum configured age of " + config.earthquake.historicalLoadPeriod / 1000 + " seconds");
+          } else {
+            // Process this result
+            console.log("VolcanoDataSource > poll > processResults: Processing result , " + result.local_date);
+            _lastContributionTime = Date.parse(result.local_date)/1000;
+            _processResult( result, 
+              function () {
+                console.log('Logged confirmed earthquake report');
+              } );
+          }
+      }
+
     function _processResult(vonaReport){
         sql = {
             text: "INSERT INTO " + config.volcano.pg.lastest_vona + " " +
-                "(code_ga, nama_gunung_api, latitude, longitude, elevation, local_date, local_time, local_datetime, time_zone, iso_datetime, foto, tingkat_aktivitas, visual, instrumental, pelapor, url, description, photo) " +
+                "(code_ga, nama_gunung_api, latitude, longitude, elevation, local_date, local_time, local_datetime, time_zone, iso_datetime, foto, tingkat_aktivitas, visual, instrumental, pelapor, url, description, photo, measuredatetime) " +
                 "VALUES (" +
                 "$1, " +
                 "$2, " +
@@ -87,7 +112,8 @@ function _fetchResults(){
                 "$15, " +
                 "$16, " +
                 "$17, " +
-                "$18 " +
+                "$18, " +
+                "$19 " +
                   ");",
                 values : [
                     vonaReport.code_ga,
@@ -108,10 +134,31 @@ function _fetchResults(){
                     vonaReport.share.url,
                     vonaReport.share.description,
                     vonaReport.share.photo,
+                    Date.parse(vonaReport.local_date)/1000,
                   ]
               };
       dbQuery(sql);
     }
+
+
+    function _getLastDataFromDatabase(){
+      console.log("Updating last contribution data from Database..")
+    
+      sql = {
+        text: "SELECT id, measuredatetime as epoch FROM " + config.volcano.pg.lastest_vona + " ORDER BY measuredatetime DESC;"
+      }
+      response = dbQuery(sql, 
+        function ( result ) {
+          if (result && result.rows && result.rows.length > 0){
+            _lastContributionTime = result.rows[0].epoch
+            console.log('Set last observation times from database, datetime: ' + _lastContributionTime);
+          }
+          else {
+            console.log('Error setting last observation time from database (is the reports table empty?)');
+          }
+        }
+      );
+  }
   
     function _connectDatabase(){
       client.connect(function(err) {
@@ -139,6 +186,7 @@ function _fetchResults(){
     client.end;
   }
 
-
 _connectDatabase();
+_getLastDataFromDatabase()
+// _connectDatabase();
 _fetchResults();
