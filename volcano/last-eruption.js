@@ -76,16 +76,16 @@ function _fetchResults(){
           if ( Date.parse(result.local_date) / 1000 <= _lastContributionTime) {
             // We've seen this result before, check the next volcano
             console.log("VolcanoDataSource > poll > processResults: Found already processed result with time: " + result.local_date);
-          // } else if ( Date.parse(result.DateTime) < new Date().getTime() - config.earthquake.historicalLoadPeriod ) {
+          // } else if ( Date.parse(result.DateTime) < new Date().getTime() - config.volcano.historicalLoadPeriod ) {
           //   // This result is older than our cutoff, check the next volcano
-          //   console.log("VolcanoDataSource > poll > processResults: Result : " +  result.DateTime + " older than maximum configured age of " + config.earthquake.historicalLoadPeriod / 1000 + " seconds");
+          //   console.log("VolcanoDataSource > poll > processResults: Result : " +  result.DateTime + " older than maximum configured age of " + config.volcano.historicalLoadPeriod / 1000 + " seconds");
           } else {
             // Process this result
             console.log("VolcanoDataSource > poll > processResults: Processing result , " + result.local_date);
             _lastContributionTime = Date.parse(result.local_date)/1000;
             _processResult( result, 
               function () {
-                console.log('Logged confirmed earthquake report');
+                console.log('Logged confirmed volcano report');
               } );
           }
       }

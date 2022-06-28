@@ -85,7 +85,7 @@ function _fetchResults(){
             _lastContributionTime = datetime;
             _processResult( result, 
               function () {
-                console.log('Logged confirmed earthquake report');
+                console.log('Logged confirmed volcano report');
               } );
           }
       }
