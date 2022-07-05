@@ -72,22 +72,33 @@ function _fetchResults(){
       // console.log(results);
       var result = results;
       var datetime =  Date.parse(result.laporan_terakhir.tanggal.split(' ')[5]) / 1000;
-          console.log(result)
-          if ( datetime < _lastContributionTime[result.gunung_code] ) {
+      console.log(_lastContributionTime[result.gunung_api.code]);
+      console.log(result.gunung_api.code);
+
+      if ( _lastContributionTime[result.gunung_api.code]){
+          if ( datetime < _lastContributionTime[result.gunung_api.code] ) {
             // We've seen this result before, check the next volcano
             console.log("VolcanoDataSourcee > poll > processResults: Found already processed result with time: " + result.laporan_terakhir.tanggal);
-          } else if ( datetime < new Date().getTime() - config.volcano.historicalLoadPeriod ) {
-            // This result is older than our cutoff, check the next volcano
-            console.log("VolcanoDataSource > poll > processResults: Result : " +  result.DateTime + " older than maximum configured age of " + config.volcano.historicalLoadPeriod / 1000 + " seconds");
-          } else {
+          }
+          // else if ( datetime < new Date().getTime() - config.volcano.historicalLoadPeriod ) {
+          //   // This result is older than our cutoff, check the next volcano
+          //   console.log("VolcanoDataSource > poll > processResults: Result : " +  result.DateTime + " older than maximum configured age of " + config.volcano.historicalLoadPeriod / 1000 + " seconds");
+          // } 
+          else {
             // Process this result
             console.log("VolcanoDataSource > poll > processResults: Processing result , " + result.laporan_terakhir.tanggal);
-            _lastContributionTime = datetime;
-            _processResult( result, 
+            _lastContributionTime[result.gunung_api.code] = datetime
+            _updateResult( result, 
               function () {
                 console.log('Logged confirmed volcano report');
               } );
           }
+        } else {
+          _processResult( result,
+            function (){
+              console.log('Insert data to Database');
+            });
+        }
       }
     
     function _processResult(vonaReport){
@@ -146,6 +157,59 @@ function _fetchResults(){
     }
 
 
+    function _updateResult(vonaReport){
+      var measuredatetime = Date.parse(vonaReport.laporan_terakhir.tanggal.split(' ')[5])/1000;
+        sql = {
+            text: "UPDATE " + config.volcano.pg.list_volcano + " SET " +
+                "gunung_code = $1, " +
+                "gunung_nama = $2, " +
+                "gunung_deskripsi = $3, " +
+                "gunung_status = $4, " +
+                "koordinat_latitude = $5, " +
+                "koordinat_longitude = $6, " +
+                "laporan_noticenumber = $7, " +
+                "laporan_tanggal = $8, " +
+                "laporan_dibuat_oleh = $9, " +
+                "visual_deskripsi = $10, " +
+                "visual_lainnya = $11, " +
+                "visual_foto = $12, " +
+                "klimatologi_deskripsi = $13, " +
+                "gempa_deskripsi = $14, " + 
+                "gempa_grafik = $15, " +
+                "gempa_rekomendasi = $16, " +
+                "url = $17, " + 
+                "share_url = $18, " +
+                "share_description = $19, " +
+                "share_photo = $20, " +
+                "measuredatetime = $21 " + "WHERE gunung_code = $22;",
+                values : [
+                    vonaReport.gunung_api.code,
+                    vonaReport.gunung_api.nama,
+                    vonaReport.gunung_api.deskripsi,
+                    vonaReport.gunung_api.status,
+                    vonaReport.gunung_api.koordinat.latitude,
+                    vonaReport.gunung_api.koordinat.longitude,
+                    vonaReport.laporan_terakhir.noticenumber,
+                    vonaReport.laporan_terakhir.tanggal,
+                    vonaReport.laporan_terakhir.dibuat_oleh,
+                    vonaReport.laporan_terakhir.visual.deskripsi,
+                    vonaReport.laporan_terakhir.visual.lainnya,
+                    vonaReport.laporan_terakhir.visual.foto,
+                    vonaReport.laporan_terakhir.klimatologi.deskripsi,
+                    vonaReport.laporan_terakhir.gempa.deskripsi,
+                    vonaReport.laporan_terakhir.gempa.grafik,
+                    vonaReport.laporan_terakhir.rekomendasi,
+                    vonaReport.url,
+                    vonaReport.share.url,
+                    vonaReport.share.description,
+                    vonaReport.share.photo,
+                    measuredatetime,
+                    vonaReport.gunung_api.code,
+                  ]
+              };
+      dbQuery(sql);
+    }
+
     function _getLastDataFromDatabase(){
       console.log("Updating last contribution data from Database..")
     
@@ -157,6 +221,8 @@ function _fetchResults(){
           if (result && result.rows && result.rows.length > 0){
             for(let i = 0; i < result.rows.length; i++){
               _lastContributionTime[result.rows[i].gunung_code] = result.rows[i].epoch
+              // console.log(result.rows[i].gunung_code);
+              // console.log(result.rows[i].epoch);
             }
             console.log('Set last observation times from database, datetime: ' + _lastContributionTime);
             // console.log(_lastContributionTime);
@@ -166,6 +232,7 @@ function _fetchResults(){
           }
         }
       );
+      _fetchResults();
   }
   
     function _connectDatabase(){
@@ -195,5 +262,4 @@ function _fetchResults(){
   }
 
 _connectDatabase();
-_getLastDataFromDatabase()
-_fetchResults();
+_getLastDataFromDatabase();
