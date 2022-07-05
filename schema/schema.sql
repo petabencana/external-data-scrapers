@@ -37,5 +37,12 @@ CREATE TABLE earthquakes_reports
     longitude character(100),
     depth character(100),
     magnitude real,
-    measuredatetime integer
+    measuredatetime integer,
+    CONSTRAINT gempabumi_pkey PRIMARY KEY (id)
 )
+WITH (
+    OIDS = FALSE
+)
+
+ALTER TABLE IF EXISTS public.earthquakes_reports
+    OWNER to postgres;
