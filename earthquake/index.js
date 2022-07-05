@@ -87,7 +87,7 @@ function _filterResults(results) {
 function _processResult(res){
     sql = {
       text: "INSERT INTO " + config.earthquake.pg.table_earthquake + " " +
-        "(tanggal, jam, datetime, measuredatetime, coordinate, lintang, bujur, magnitude, kedalaman, wilayah, potensi, dirasakan, shakemap) " +
+        "(date, time, datetime, measuredatetime, coordinate, latitude, longitude, magnitude, depth, zone, potential, feltarea, shakemap) " +
         "VALUES (" +
         "$1, " +
         "$2, " +

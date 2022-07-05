@@ -20,7 +20,7 @@ config.earthquake.historicalLoadPeriod = 1000 * 60 * 1440; // E.g. 1000 * 60 * 1
 
 // Earthquake configuration for cognicity-schema
 config.earthquake.pg = {};
-config.earthquake.pg.table_earthquake = 'public.gempabumi';
+config.earthquake.pg.table_earthquake = 'public.earthquakes_reports';
 
 // Postgres database connection
 config.pg = {};
