@@ -42,7 +42,7 @@ CREATE TABLE earthquakes_reports
 )
 WITH (
     OIDS = FALSE
-)
+);
 
 ALTER TABLE IF EXISTS public.earthquakes_reports
     OWNER to postgres;

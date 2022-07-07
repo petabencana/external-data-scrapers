@@ -102,3 +102,6 @@ dist
 
 # TernJS port file
 .tern-port
+
+# Schema test script
+schema_test.sql
