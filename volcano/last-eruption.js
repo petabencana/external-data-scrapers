@@ -33,67 +33,73 @@ const options = {
 
 function _fetchResults(){
 
-  console.log(options)
-    var response = "";
+  console.log('VolcanoDataSource > poll > fetchResults: Loading API')
+    var responseData = "";
+    var requestURL = options;
+    var volcanoDataSource;
+    var volcanoDataFiltered = new Array();
+    // console.log(requestURL);
+    var requestAPI = https.request( requestURL , function(responseAPI) {
+      responseAPI.setEncoding('utf8');
 
-    var req = https.request( options , function(res) {
-      res.setEncoding('utf8');
-
-      res.on('data', function (chunk) {
-        console.log('masuk');
-        response += chunk;
+      responseAPI.on('data', function (chunk) {
+        responseData += chunk;
       });
 
-      res.on('end', function() {
-        var responseObject;
+      responseAPI.on('end', function() {
         try {
-            responseObject = JSON.parse( response );
-            console.log(responseObject.data);
-            _filterResults(responseObject.data);
-            // _processResult(responseObject.data);
+            volcanoDataSource = JSON.parse( responseData );
+            volcanoDataFiltered = _filterResults(volcanoDataSource.data);
+            if (volcanoDataFiltered.length > 0) {
+              console.log("VolcanoDataSource > poll > processResults: Processing result");
+              _processResult(volcanoDataFiltered);
+            } else {
+              console.log("VolcanoDataSource > poll > processResults: There is no data to be processed");
+            }
         } catch (e) {
-            console.log( " VolcanoDataSource > poll > fetchResults: Error parsing JSON: " + response );
+            console.log( " VolcanoDataSource > poll > fetchResults: Error parsing JSON: " + responseData );
             return;
         }
-            console.log('VolcanoDataSource > poll > fetchResults: ' + response.length + " bytes");
+            console.log('VolcanoDataSource > poll > fetchResults: ' + responseData.length + " bytes");
           });
       });
 
-      req.on('error', function(error) {
+      requestAPI.on('error', function(error) {
         console.log( "VolcanoDataSource > poll > fetchResults: Error fetching data, " + error.message + ", " + error.stack );
       });
-    req.end();
+    requestAPI.end();
+    return;
     }
 
-    function _filterResults(results) {
+    function _filterResults(volcanoData) {
       console.log("filtering results...");
-      results = results;
-      console.log(results);
-    
+      var volcanoDataFiltered = new Array();
+      // console.log(volcanoDataSource);
       // For each result:
-      var result = results;
-      console.log(result.local_date)
-          if ( Date.parse(result.local_date) / 1000 <= _lastContributionTime) {
+          if ( Date.parse(volcanoData.local_date) / 1000 <= _lastContributionTime) {
             // We've seen this result before, check the next volcano
-            console.log("VolcanoDataSource > poll > processResults: Found already processed result with time: " + result.local_date);
+            console.log("VolcanoDataSource > poll > processResults: Found already processed result with time: " + volcanoData.local_date);
           // } else if ( Date.parse(result.DateTime) < new Date().getTime() - config.volcano.historicalLoadPeriod ) {
           //   // This result is older than our cutoff, check the next volcano
           //   console.log("VolcanoDataSource > poll > processResults: Result : " +  result.DateTime + " older than maximum configured age of " + config.volcano.historicalLoadPeriod / 1000 + " seconds");
           } else {
             // Process this result
-            console.log("VolcanoDataSource > poll > processResults: Processing result , " + result.local_date);
-            _lastContributionTime = Date.parse(result.local_date)/1000;
-            _processResult( result, 
-              function () {
-                console.log('Logged confirmed volcano report');
-              } );
+            console.log("VolcanoDataSource > poll > processResults: Processing result , " + volcanoData.local_date);
+            _lastContributionTime = Date.parse(volcanoData.local_date)/1000;
+            volcanoDataFiltered.push(volcanoData);
+            // _processResult( volcanoData, 
+            //   function () {
+            //     console.log('Logged confirmed volcano report');
+            //   } );
           }
+          return volcanoDataFiltered;
       }
 
-    function _processResult(vonaReport){
+    function _processResult(volcanoDataFiltered){
+        volcanoDataFiltered.forEach(function(vonaReport){
         sql = {
-            text: "INSERT INTO " + config.volcano.pg.lastest_vona + " " +
-                "(code_ga, nama_gunung_api, latitude, longitude, elevation, local_date, local_time, local_datetime, time_zone, iso_datetime, foto, tingkat_aktivitas, visual, instrumental, pelapor, url, description, photo, measuredatetime) " +
+            text: "INSERT INTO " + config.volcano.pg.lastest_eruption + " " +
+                "(volcano_code, volcano_name, latitude, longitude, elevation, local_date, local_time, local_datetime, time_zone, iso_datetime, photo_, activity_level, visual, instrumental, reporter, share_url, share_description, share_photo, measuredatetime) " +
                 "VALUES (" +
                 "$1, " +
                 "$2, " +
@@ -138,19 +144,20 @@ function _fetchResults(){
                   ]
               };
       dbQuery(sql);
-    }
+    });
+  }
 
 
     function _getLastDataFromDatabase(){
       console.log("Updating last contribution data from Database..")
     
       sql = {
-        text: "SELECT id, measuredatetime as epoch FROM " + config.volcano.pg.lastest_vona + " ORDER BY measuredatetime DESC;"
+        text: "SELECT id, measuredatetime as epoch FROM " + config.volcano.pg.lastest_eruption + " ORDER BY measuredatetime DESC;"
       }
       response = dbQuery(sql, 
-        function ( result ) {
-          if (result && result.rows && result.rows.length > 0){
-            _lastContributionTime = result.rows[0].epoch
+        function ( lastestData ) {
+          if (lastestData && lastestData.rows && lastestData.rows.length > 0){
+            _lastContributionTime = lastestData.rows[0].epoch
             console.log('Set last observation times from database, datetime: ' + _lastContributionTime);
           }
           else {
@@ -161,25 +168,28 @@ function _fetchResults(){
   }
   
     function _connectDatabase(){
-      client.connect(function(err) {
-          if (err) throw err;
-          console.log("Database Connected");
+      client.connect(function(error) {
+        if (error){
+          console.log("_connectDatabase: Error in connecting to database: " + error.message + ", " + error.stack);
+          throw error;
+        }
+        console.log("Database Connected");
       });
   }
   
   function dbQuery(sql,success) {
-      client.query(sql,(err,res) => {
-          if (!err){
-          console.log( "dbQuery: success: " + JSON.stringify(config) );
+      client.query(sql,(error,result) => {
+          if (!error){
+          console.log( "dbQuery: success " );
           if (success) {
               try {
-                  success(res);
+                  success(result);
               } catch(error) {
                   console.log("dbQuery: Error in success callback: " + error.message + ", " + error.stack);
               }
           }
           } else {
-          console.log(err.stack);
+          console.log(error.stack);
           }
       });
   
@@ -188,5 +198,4 @@ function _fetchResults(){
 
 _connectDatabase();
 _getLastDataFromDatabase()
-// _connectDatabase();
 _fetchResults();

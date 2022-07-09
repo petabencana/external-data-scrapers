@@ -33,52 +33,77 @@ const options = {
 
 function _fetchResults(){
 
-  console.log(options)
-    var response = "";
+  console.log('VolcanoDataSource > poll > fetchResults: Loading API')
+  var responseData = "";
+  var requestURL = options;
+  var volcanoDataSource;
+  var volcanoDataFiltered;
+  var volcanoDatatoInsert = new Array();
+  var volcanoDatatoUpdate = new Array();
 
-    var req = https.request( options , function(res) {
-      res.setEncoding('utf8');
+    var requestAPI = https.request( requestURL , function(responseAPI) {
+      responseAPI.setEncoding('utf8');
 
-      res.on('data', function (chunk) {
-        // console.log('masuk');
-        response += chunk;
+      responseAPI.on('data', function (chunk) {
+        responseData += chunk;
       });
 
-      res.on('end', function() {
-        var responseObject;
+      responseAPI.on('end', function() {
         try {
-            responseObject = JSON.parse( response );
-            for(let i = 0; i < responseObject.length; i++) {
-              _filterResults(responseObject[i]);
+          volcanoDataSource = JSON.parse( responseData );
+          for(let i = 0; i < volcanoDataSource.length; i++) {
+            volcanoDataFiltered = _filterResults(volcanoDataSource[i]);
+            if (volcanoDataFiltered == 0){
+            //  console.log("Update Data.....");
+             volcanoDatatoUpdate.push(volcanoDataSource[i]);
+            }else if(volcanoDataFiltered == 1){
+              // console.log("Insert Data.....");
+              volcanoDatatoInsert.push(volcanoDataSource[i]);
             }
+          }
+
+          //for insert data volcano
+          if (volcanoDatatoInsert.length > 0) {
+            console.log("VolcanoDataSource > poll > processResult: Processing insert");
+            _processResult(volcanoDatatoInsert);
+          } else {
+            console.log("VolcanoDataSource > poll > processResult: There is no data to be insert");
+          }
+          
+          //for update data volcano
+          if (volcanoDatatoUpdate.length > 0) {
+            console.log("VolcanoDataSource > poll > updateResult: Processing update");
+            _updateResult(volcanoDatatoUpdate);
+          } else {
+            console.log("VolcanoDataSource > poll > updateResult: There is no data to be updated");
+          }
+
+          
         } catch (e) {
-            console.log( " VolcanoDataSource > poll > fetchResults: Error parsing JSON: " + response );
+            console.log( " VolcanoDataSource > poll > fetchResults: Error parsing JSON" );
             return;
         }
-            console.log('VolcanoDataSource > poll > fetchResults: ' + response.length + " bytes");
+            console.log('VolcanoDataSource > poll > fetchResults: ' + responseData.length + " bytes");
           });
       });
 
-      req.on('error', function(error) {
+      requestAPI.on('error', function(error) {
         console.log( "VolcanoDataSource > poll > fetchResults: Error fetching data, " + error.message + ", " + error.stack );
       });
-    req.end();
+    requestAPI.end();
+    return;
     }
 
 
-    function _filterResults(results) {
+    function _filterResults(volcanoData) {
       console.log("filtering results...");
-      results = results;
-      // console.log(results);
-      var result = results;
-      var datetime =  Date.parse(result.laporan_terakhir.tanggal.split(' ')[5]) / 1000;
-      console.log(_lastContributionTime[result.gunung_api.code]);
-      console.log(result.gunung_api.code);
+      var datetime =  Date.parse(volcanoData.laporan_terakhir.tanggal.split(' ')[5]) / 1000;
 
-      if ( _lastContributionTime[result.gunung_api.code]){
-          if ( datetime < _lastContributionTime[result.gunung_api.code] ) {
+      if ( _lastContributionTime[volcanoData.gunung_api.code]){
+          if ( datetime < _lastContributionTime[volcanoData.gunung_api.code] ) {
             // We've seen this result before, check the next volcano
-            console.log("VolcanoDataSourcee > poll > processResults: Found already processed result with time: " + result.laporan_terakhir.tanggal);
+            console.log("VolcanoDataSourcee > poll > processResults: Found already processed result with time: " + volcanoData.laporan_terakhir.tanggal);
+            return -1;
           }
           // else if ( datetime < new Date().getTime() - config.volcano.historicalLoadPeriod ) {
           //   // This result is older than our cutoff, check the next volcano
@@ -86,26 +111,29 @@ function _fetchResults(){
           // } 
           else {
             // Process this result
-            console.log("VolcanoDataSource > poll > processResults: Processing result , " + result.laporan_terakhir.tanggal);
-            _lastContributionTime[result.gunung_api.code] = datetime
-            _updateResult( result, 
-              function () {
-                console.log('Logged confirmed volcano report');
-              } );
+            console.log("VolcanoDataSource > poll > processResults: Processing result , " + volcanoData.laporan_terakhir.tanggal);
+            _lastContributionTime[volcanoData.gunung_api.code] = datetime
+            // _updateResult( volcanoData, 
+            //   function () {
+            //     console.log('Logged confirmed volcano report');
+            //   } );
+            return 0;
           }
         } else {
-          _processResult( result,
-            function (){
-              console.log('Insert data to Database');
-            });
+          // _processResult( volcanoData,
+          //   function (){
+          //     console.log('Insert data to Database');
+          //   });
+          return 1;
         }
       }
     
-    function _processResult(vonaReport){
+    function _processResult(volcanoDatatoInsert){
+      volcanoDatatoInsert.forEach(function(vonaReport){
       var measuredatetime = Date.parse(vonaReport.laporan_terakhir.tanggal.split(' ')[5])/1000;
         sql = {
             text: "INSERT INTO " + config.volcano.pg.list_volcano + " " +
-                "(gunung_code, gunung_nama, gunung_deskripsi, gunung_status, koordinat_latitude, koordinat_longitude, laporan_noticenumber, laporan_tanggal, laporan_dibuat_oleh, visual_deskripsi, visual_lainnya, visual_foto, klimatologi_deskripsi, gempa_deskripsi, gempa_grafik, gempa_rekomendasi, url, share_url, share_description, share_photo, measuredatetime) " +
+                "(volcano_code, volcano_name, volcano_description, volcano_status, coordinat_latitude, coordinat_longitude, report_noticenumber, report_date, report_made_by, visual_description, visual_others, visual_photo, climatology_description, earthquake_description, earthquake_chart, earthquake_recommendation, url, share_url, share_description, share_photo, measuredatetime) " +
                 "VALUES (" +
                 "$1, " +
                 "$2, " +
@@ -154,34 +182,36 @@ function _fetchResults(){
                   ]
               };
       dbQuery(sql);
+      });
     }
 
 
-    function _updateResult(vonaReport){
+    function _updateResult(volcanoDatatoUpdate){
+      volcanoDatatoUpdate.forEach(function(vonaReport){
       var measuredatetime = Date.parse(vonaReport.laporan_terakhir.tanggal.split(' ')[5])/1000;
         sql = {
             text: "UPDATE " + config.volcano.pg.list_volcano + " SET " +
-                "gunung_code = $1, " +
-                "gunung_nama = $2, " +
-                "gunung_deskripsi = $3, " +
-                "gunung_status = $4, " +
-                "koordinat_latitude = $5, " +
-                "koordinat_longitude = $6, " +
-                "laporan_noticenumber = $7, " +
-                "laporan_tanggal = $8, " +
-                "laporan_dibuat_oleh = $9, " +
-                "visual_deskripsi = $10, " +
-                "visual_lainnya = $11, " +
-                "visual_foto = $12, " +
-                "klimatologi_deskripsi = $13, " +
-                "gempa_deskripsi = $14, " + 
-                "gempa_grafik = $15, " +
-                "gempa_rekomendasi = $16, " +
+                "volcano_code = $1, " +
+                "volcano_name = $2, " +
+                "volcano_description = $3, " +
+                "volcano_status = $4, " +
+                "coordinat_latitude = $5, " +
+                "coordinat_longitude = $6, " +
+                "report_noticenumber = $7, " +
+                "report_date = $8, " +
+                "report_made_by = $9, " +
+                "visual_description = $10, " +
+                "visual_others = $11, " +
+                "visual_photo = $12, " +
+                "climatology_description = $13, " +
+                "earthquake_description = $14, " + 
+                "earthquake_chart = $15, " +
+                "earthquake_recommendation = $16, " +
                 "url = $17, " + 
                 "share_url = $18, " +
                 "share_description = $19, " +
                 "share_photo = $20, " +
-                "measuredatetime = $21 " + "WHERE gunung_code = $22;",
+                "measuredatetime = $21 " + "WHERE volcano_code = $22;",
                 values : [
                     vonaReport.gunung_api.code,
                     vonaReport.gunung_api.nama,
@@ -208,24 +238,22 @@ function _fetchResults(){
                   ]
               };
       dbQuery(sql);
+     });
     }
 
     function _getLastDataFromDatabase(){
       console.log("Updating last contribution data from Database..")
     
       sql = {
-        text: "SELECT gunung_code, measuredatetime as epoch FROM " + config.volcano.pg.list_volcano + ";"
+        text: "SELECT volcano_code, measuredatetime as epoch FROM " + config.volcano.pg.list_volcano + ";"
       }
       response = dbQuery(sql, 
-        function ( result ) {
-          if (result && result.rows && result.rows.length > 0){
-            for(let i = 0; i < result.rows.length; i++){
-              _lastContributionTime[result.rows[i].gunung_code] = result.rows[i].epoch
-              // console.log(result.rows[i].gunung_code);
-              // console.log(result.rows[i].epoch);
+        function ( lastestData ) {
+          if (lastestData && lastestData.rows && lastestData.rows.length > 0){
+            for(let i = 0; i < lastestData.rows.length; i++){
+              _lastContributionTime[lastestData.rows[i].volcano_code] = lastestData.rows[i].epoch
             }
             console.log('Set last observation times from database, datetime: ' + _lastContributionTime);
-            // console.log(_lastContributionTime);
           }
           else {
             console.log('Error setting last observation time from database (is the reports table empty?)');
@@ -234,27 +262,30 @@ function _fetchResults(){
       );
       _fetchResults();
   }
-  
-    function _connectDatabase(){
-      client.connect(function(err) {
-          if (err) throw err;
-          console.log("Database Connected");
-      });
-  }
+
+  function _connectDatabase(){
+    client.connect(function(error) {
+      if (error){
+        console.log("_connectDatabase: Error in connecting to database: " + error.message + ", " + error.stack);
+        throw error;
+      }
+      console.log("Database Connected");
+    });
+}
   
   function dbQuery(sql,success) {
-      client.query(sql,(err,res) => {
-          if (!err){
-          console.log( "dbQuery: success: " + JSON.stringify(config) );
+      client.query(sql,(error,result) => {
+          if (!error){
+          console.log( "dbQuery: success ");
           if (success) {
               try {
-                  success(res);
+                  success(result);
               } catch(error) {
                   console.log("dbQuery: Error in success callback: " + error.message + ", " + error.stack);
               }
           }
           } else {
-          console.log(err.stack);
+          console.log(error.stack);
           }
       });
   

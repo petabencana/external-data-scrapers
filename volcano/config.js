@@ -10,8 +10,8 @@ require('dotenv').config();
  * @property {number} volcano.historicalLoadPeriod Maximum age in milliseconds of reports which will be processed
  * @property {object} dims.pg Postgres configuration
  * @property {string} dims.pg.lastest_vona Database table to store volcano reports in
- * @property {string} volcano.pg.lastest_vona 
- * @property {string} volcano.pg.list_volcano
+ * @property {string} volcano.pg.lastest_eruption Table for last-eruption
+ * @property {string} volcano.pg.list_volcano Table for lis-volcano
  * @property {string} volcano.access_token_key Take from the twitter dev admin interface
  */
 var config = {};
@@ -24,7 +24,7 @@ config.volcano.historicalLoadPeriod = 1000 * 60 * 720; // E.g. 1000 * 60 * 120 =
 
 // volcano configuration for cognicity-schema
 config.volcano.pg = {};
-config.volcano.pg.lastest_vona = 'public.lastest_vona';
+config.volcano.pg.lastest_eruption = 'public.lastest_eruption';
 config.volcano.pg.list_volcano = 'public.list_volcano';
 
 // Postgres database connection
